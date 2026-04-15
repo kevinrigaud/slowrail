@@ -687,17 +687,14 @@ async function searchRoutes() {
     ? `The user is flexible and has ${days} days available to travel. Suggest scenic multi-day options with overnight trains where possible.`
     : `The user prefers a relatively direct route with minimal detours.`;
 
-  const systemPrompt = `You are a world-class slow travel expert specializing in train, ferry, and long-distance bus routes globally. You have deep knowledge of rail operators worldwide: SNCF, Deutsche Bahn, Renfe, Trenitalia, SBB, ÖBB, PKP, Czech Railways, Trans-Siberian, Amtrak, VIA Rail, JR Pass, KTX, Indian Railways, etc.
+ const systemPrompt = `Expert slow travel. Return ONLY valid JSON, no text outside JSON.`;
 
-CRITICAL: Return ONLY valid JSON. No markdown, no explanation, no preamble. The response must start with { and end with }.`;
+const userPrompt = `Overland routes (train/ferry/bus, NO flights) from "${from}" to "${to}". ${flexInfo}
 
-  const userPrompt = `Overland routes only (train/ferry/bus, NO flights) from "${from}" to "${to}". ${flexInfo}
+Return JSON:
+{"possible":true,"routes":[{"id":1,"label_fr":"nom FR","label_en":"name EN","type_fr":"type","type_en":"type","duration_display":"8h00","duration_hours":8,"price_eur_min":50,"price_eur_max":150,"changes":1,"distance_km":1000,"segments":[{"mode":"train","from":"A","to":"B","operator":"Op","duration":"2h","note_fr":"note","note_en":"note"}],"waypoints":[{"lat":48.85,"lng":2.35,"name":"Paris","note":"Gare"},{"lat":52.52,"lng":13.37,"name":"Berlin","note":"Hbf"}],"bonus_stops_fr":["Ville — détail"],"bonus_stops_en":["City — detail"],"booking_urls":[{"name":"Trainline","url":"https://www.thetrainline.com"}],"highlights_fr":"Phrase courte.","highlights_en":"Short sentence."}],"co2_saved_kg":100,"co2_plane_kg":150,"error_fr":null,"error_en":null}
 
-Respond with ONLY valid JSON, nothing else. Be CONCISE in text fields (max 8 words for highlights, max 3 bonus stops per route, max 2 booking_urls per route).
-
-{"possible":true,"routes":[{"id":1,"label_fr":"FR name","label_en":"EN name","type_fr":"type FR","type_en":"type EN","duration_display":"8h00","duration_hours":8.0,"price_eur_min":59,"price_eur_max":150,"changes":1,"distance_km":1050,"segments":[{"mode":"train","from":"City A","to":"City B","operator":"Operator","duration":"1h22","note_fr":"note","note_en":"note"}],"waypoints":[{"lat":48.88,"lng":2.35,"name":"Paris","note":"Gare du Nord"},{"lat":52.52,"lng":13.37,"name":"Berlin","note":"Hbf"}],"bonus_stops_fr":["City — detail"],"bonus_stops_en":["City — detail"],"booking_urls":[{"name":"Trainline","url":"https://www.thetrainline.com"}],"highlights_fr":"Courte phrase poétique.","highlights_en":"Short poetic sentence."}],"co2_saved_kg":110,"co2_plane_kg":130,"error_fr":null,"error_en":null}
-
-Rules: 2 routes max (fastest + scenic). Accurate lat/lng. mode: train|bus|ferry|metro|tram. If ocean crossing impossible set possible:false. JSON only.`;
+Max 2 routes. Accurate coords. If ocean crossing impossible: possible:false. JSON only.`;
 
   try {
     const response = await fetch('/api/claude', {
