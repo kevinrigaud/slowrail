@@ -858,7 +858,7 @@ function showRouteOnMap(idx) {
   if (!route) return;
   const stops = [currentResult._from, ...(route.waypoints||[]).slice(1,-1).map(w=>w.name), currentResult._to];
   const query = encodeURIComponent(stops.join(' → '));
-  const url = `https://www.google.com/maps/search/${query}`;
+  const url = `https://www.google.com/maps/dir/${stops.map(s=>encodeURIComponent(s)).join('/')}`;
   window.open(url, '_blank');
 }
 
