@@ -856,8 +856,11 @@ function showRouteOnMap(idx) {
   if (!currentResult) return;
   const route = currentResult.routes[idx];
   if (!route || !route.waypoints || route.waypoints.length < 2) return;
-  document.getElementById('map-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  setTimeout(() => initMap([route], currentResult._from, currentResult._to), 200);
+  const points = route.waypoints.map(w => w.lat + ',' + w.lng).join('|');
+  const origin = route.waypoints[0].lat + ',' + route.waypoints[0].lng;
+  const dest = route.waypoints[route.waypoints.length-1].lat + ',' + route.waypoints[route.waypoints.length-1].lng;
+  const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=transit`;
+  window.open(url, '_blank');
 }
 
 function handleSave(idx, saveDataStr) {
