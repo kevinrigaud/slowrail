@@ -28,7 +28,7 @@ ${userContent}`;
     }
   });
 
-  const path = `/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const path = `/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`;
 
   const options = {
     hostname: 'generativelanguage.googleapis.com',
