@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#3D2B1F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SlowRail">
+<meta name="description" content="Voyagez dans le monde entier uniquement en train, ferry et bus. Slow travel, zéro avion.">
+<title>SlowRail — Voyagez lentement</title>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Zilla+Slab:wght@300;400;500;600&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --cream: #F5F0E8;
+  --dark: #1C1A14;
+  --rail-brown: #3D2B1F;
+  --olive: #4A5240;
+  --rust: #B5451B;
+  --gold: #C9A84C;
+  --sage: #7A8C6E;
+  --mist: #E8E0D0;
+  --track: #6B5D4F;
+  --white: #FFFFFF;
+  --success: #2D6A4F;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: 'Zilla Slab', serif; background: var(--cream); color: var(--dark); min-height: 100vh; }
+
+/* ── HEADER ── */
+.header {
+  background: var(--rail-brown);
+  padding: 1rem 2rem;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 4px solid var(--gold);
+  position: sticky; top: 0; z-index: 1000;
+}
+.logo { font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 900; color: var(--gold); letter-spacing: .05em; }
+.logo span { color: var(--cream); font-weight: 400; }
+.header-right { display: flex; align-items: center; gap: 1rem; }
+.nav-saved {
+  background: none; border: 1px solid var(--gold); color: var(--gold);
+  padding: 5px 14px; font-family: 'Roboto Mono', monospace; font-size: .7rem;
+  letter-spacing: .1em; cursor: pointer; position: relative;
+}
+.nav-saved:hover { background: var(--gold); color: var(--rail-brown); }
+.saved-badge {
+  position: absolute; top: -6px; right: -6px;
+  background: var(--rust); color: white;
+  border-radius: 50%; width: 16px; height: 16px;
+  font-size: .6rem; display: flex; align-items: center; justify-content: center;
+}
+.lang-toggle { display: flex; gap: 3px; }
+.lang-btn {
+  background: none; border: 1px solid var(--gold); color: var(--gold);
+  padding: 4px 10px; font-family: 'Roboto Mono', monospace; font-size: .7rem; cursor: pointer;
+}
+.lang-btn.active { background: var(--gold); color: var(--rail-brown); font-weight: 500; }
+
+/* ── HERO / SEARCH ── */
+.hero {
+  background: var(--rail-brown);
+  padding: 2.5rem 2rem 4rem;
+  position: relative; overflow: hidden;
+}
+.hero::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0; height: 6px;
+  background: repeating-linear-gradient(90deg, var(--gold) 0, var(--gold) 20px, transparent 20px, transparent 40px);
+}
+/* decorative rail lines */
+.hero::before {
+  content: '';
+  position: absolute; top: 0; right: -40px; width: 300px; height: 100%;
+  background: repeating-linear-gradient(170deg, transparent 0, transparent 30px, rgba(201,168,76,.06) 30px, rgba(201,168,76,.06) 31px);
+  pointer-events: none;
+}
+.hero-title { font-family: 'Playfair Display', serif; font-size: clamp(1.6rem,4vw,2.8rem); font-weight: 900; color: var(--cream); line-height: 1.15; margin-bottom: .4rem; }
+.hero-title em { color: var(--gold); font-style: normal; }
+.hero-sub { color: var(--mist); font-size: .95rem; opacity: .8; margin-bottom: 2rem; font-weight: 300; }
+
+.search-card {
+  background: var(--cream);
+  border-radius: 2px; padding: 1.75rem;
+  max-width: 780px;
+  border-left: 5px solid var(--gold);
+  box-shadow: 8px 8px 0 rgba(0,0,0,.25);
+}
+.search-row {
+  display: grid; grid-template-columns: 1fr auto 1fr;
+  gap: .75rem; align-items: end; margin-bottom: .75rem;
+}
+.field-label { font-family: 'Roboto Mono', monospace; font-size: .65rem; letter-spacing: .2em; text-transform: uppercase; color: var(--track); margin-bottom: 5px; }
+.field-input {
+  width: 100%; padding: 11px 14px;
+  font-family: 'Zilla Slab', serif; font-size: 1.05rem;
+  background: white; border: 1.5px solid var(--mist); border-radius: 2px;
+  color: var(--dark); outline: none; transition: border-color .2s;
+}
+.field-input:focus { border-color: var(--gold); }
+.swap-btn {
+  background: none; border: 1.5px solid var(--mist); border-radius: 50%;
+  width: 40px; height: 40px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; color: var(--track); flex-shrink: 0;
+  transition: background .2s, color .2s;
+}
+.swap-btn:hover { background: var(--gold); color: white; border-color: var(--gold); }
+
+.options-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-bottom: 1.25rem; }
+.option-block { display: flex; flex-direction: column; }
+.flex-toggle { display: flex; gap: 5px; margin-top: 5px; }
+.flex-btn {
+  flex: 1; padding: 8px 4px;
+  font-family: 'Roboto Mono', monospace; font-size: .68rem; letter-spacing: .05em;
+  background: white; border: 1.5px solid var(--mist); border-radius: 2px;
+  cursor: pointer; color: var(--track); transition: all .2s; text-align: center;
+}
+.flex-btn.active { background: var(--olive); color: white; border-color: var(--olive); }
+.days-field {
+  width: 100%; padding: 11px 14px;
+  font-family: 'Zilla Slab', serif; font-size: 1rem;
+  background: white; border: 1.5px solid var(--mist); border-radius: 2px;
+  color: var(--dark); outline: none; margin-top: 5px;
+}
+.search-btn {
+  width: 100%; padding: 14px;
+  background: var(--rust); color: white; border: none;
+  font-family: 'Playfair Display', serif; font-size: 1.05rem; font-weight: 700;
+  cursor: pointer; border-radius: 2px; transition: background .2s;
+}
+.search-btn:hover { background: #8C3412; }
+.search-btn:disabled { background: var(--track); cursor: not-allowed; }
+
+/* ── MAIN ── */
+.main { padding: 2rem; max-width: 980px; margin: 0 auto; }
+
+/* ── LOADING ── */
+.loading-state { display: none; text-align: center; padding: 4rem 2rem; }
+.loading-state.active { display: block; }
+.train-track {
+  width: 200px; height: 4px; background: var(--mist);
+  border-radius: 2px; margin: 0 auto 1.5rem; overflow: hidden; position: relative;
+}
+.train-track::after {
+  content: '';
+  position: absolute; top: 0; left: -40%;
+  width: 40%; height: 100%;
+  background: var(--gold);
+  animation: trackfill 1.4s ease-in-out infinite;
+}
+@keyframes trackfill { 0%{left:-40%} 100%{left:140%} }
+.loading-loco { font-size: 2.5rem; animation: loco 1.4s ease-in-out infinite; display: inline-block; }
+@keyframes loco { 0%{transform:translateX(-20px)} 50%{transform:translateX(20px)} 100%{transform:translateX(-20px)} }
+.loading-text { font-family: 'Playfair Display', serif; font-size: 1.3rem; color: var(--rail-brown); margin-top: .75rem; }
+.loading-sub { font-family: 'Roboto Mono', monospace; font-size: .7rem; color: var(--track); margin-top: .4rem; letter-spacing: .15em; }
+
+/* ── ERROR ── */
+.error-state { display: none; text-align: center; padding: 3rem; background: white; border: 1.5px solid var(--mist); border-radius: 2px; margin-top: 1.5rem; }
+.error-state.active { display: block; }
+.error-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+.error-msg { font-family: 'Playfair Display', serif; font-size: 1.2rem; color: var(--rail-brown); margin-bottom: .4rem; }
+.error-sub { font-size: .85rem; color: var(--track); }
+
+/* ── RESULTS ── */
+.results-section { display: none; }
+.results-section.active { display: block; }
+.results-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1.25rem; padding-bottom: .75rem; border-bottom: 2px solid var(--mist); flex-wrap: wrap; }
+.results-title { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: var(--rail-brown); }
+.results-count { font-family: 'Roboto Mono', monospace; font-size: .7rem; color: var(--track); letter-spacing: .1em; }
+
+.co2-banner {
+  background: var(--olive); color: white;
+  padding: .9rem 1.25rem; border-radius: 2px;
+  display: flex; align-items: center; gap: 1.25rem;
+  margin-bottom: 1.25rem; flex-wrap: wrap;
+}
+.co2-icon { font-size: 1.6rem; flex-shrink: 0; }
+.co2-main { flex: 1; }
+.co2-label { font-size: .78rem; opacity: .85; margin-bottom: 2px; }
+.co2-saving { font-family: 'Playfair Display', serif; font-size: 1.35rem; font-weight: 700; color: var(--gold); }
+.co2-compare { font-size: .7rem; opacity: .7; font-family: 'Roboto Mono', monospace; }
+
+/* MAP */
+#map-container {
+  display: none; margin-bottom: 1.25rem;
+  border-radius: 2px; overflow: hidden;
+  border: 1.5px solid var(--mist);
+}
+#map-container.active { display: block; }
+#route-map { height: 320px; width: 100%; }
+.map-header {
+  background: var(--rail-brown); color: var(--cream);
+  padding: .6rem 1rem;
+  font-family: 'Roboto Mono', monospace; font-size: .7rem; letter-spacing: .15em;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.map-route-label { color: var(--gold); }
+
+/* ROUTE CARDS */
+.route-card {
+  background: white; border-radius: 2px;
+  border: 1.5px solid var(--mist);
+  margin-bottom: 1rem; overflow: hidden;
+  transition: border-color .2s, box-shadow .2s;
+}
+.route-card:hover { border-color: var(--gold); box-shadow: 4px 4px 0 rgba(201,168,76,.12); }
+.route-card.expanded { border-color: var(--rust); }
+
+.route-header { padding: 1.1rem 1.4rem; display: flex; align-items: center; gap: 1rem; cursor: pointer; }
+.route-meta { flex: 1; min-width: 0; }
+.route-type { font-family: 'Roboto Mono', monospace; font-size: .62rem; letter-spacing: .2em; text-transform: uppercase; color: var(--rust); margin-bottom: 3px; }
+.route-name { font-family: 'Playfair Display', serif; font-size: 1.05rem; font-weight: 700; line-height: 1.25; }
+.route-highlight { font-size: .8rem; color: var(--track); font-style: italic; margin-top: 2px; }
+
+.route-stats { display: flex; gap: 1.2rem; text-align: center; flex-shrink: 0; align-items: center; }
+.stat { display: flex; flex-direction: column; }
+.stat-val { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; color: var(--rail-brown); }
+.stat-lbl { font-family: 'Roboto Mono', monospace; font-size: .58rem; letter-spacing: .12em; text-transform: uppercase; color: var(--track); }
+.expand-chevron { color: var(--track); font-size: 1rem; transition: transform .3s; flex-shrink: 0; align-self: flex-start; margin-top: 4px; }
+.route-card.expanded .expand-chevron { transform: rotate(180deg); }
+
+.route-detail { display: none; padding: 0 1.4rem 1.4rem; border-top: 1px solid var(--mist); }
+.route-card.expanded .route-detail { display: block; }
+
+.section-label { font-family: 'Roboto Mono', monospace; font-size: .62rem; letter-spacing: .2em; text-transform: uppercase; color: var(--track); margin: 1rem 0 .6rem; }
+
+.segment-list { margin-bottom: 1rem; }
+.segment {
+  display: grid; grid-template-columns: 28px 1fr auto;
+  gap: .6rem; align-items: start;
+  padding: 7px 0; border-bottom: 1px solid var(--mist);
+  font-size: .88rem;
+}
+.segment:last-child { border-bottom: none; }
+.seg-icon { text-align: center; font-size: .95rem; margin-top: 1px; }
+.seg-name { font-weight: 500; line-height: 1.3; }
+.seg-detail { font-size: .74rem; color: var(--track); font-family: 'Roboto Mono', monospace; }
+.seg-dur { font-family: 'Roboto Mono', monospace; font-size: .72rem; color: var(--track); text-align: right; white-space: nowrap; }
+
+.bonus-area { background: var(--cream); border-radius: 2px; padding: .9rem 1.1rem; margin-bottom: 1rem; }
+.bonus-title { font-family: 'Playfair Display', serif; font-size: .95rem; color: var(--rail-brown); margin-bottom: .6rem; }
+.bonus-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.bonus-chip {
+  background: white; border: 1px solid var(--gold); border-radius: 2px;
+  padding: 4px 11px; font-size: .78rem; font-family: 'Zilla Slab', serif;
+  cursor: default; color: var(--rail-brown);
+}
+
+.actions-row { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
+.book-btn {
+  padding: 9px 18px; font-family: 'Roboto Mono', monospace;
+  font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+  border-radius: 2px; border: 1.5px solid var(--rust);
+  background: var(--rust); color: white; cursor: pointer;
+  transition: background .2s; text-decoration: none; display: inline-block;
+}
+.book-btn:hover { background: #8C3412; border-color: #8C3412; }
+.book-btn.secondary { background: white; color: var(--rust); }
+.book-btn.secondary:hover { background: var(--rust); color: white; }
+.save-btn {
+  padding: 9px 18px; font-family: 'Roboto Mono', monospace;
+  font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+  border-radius: 2px; border: 1.5px solid var(--olive);
+  background: white; color: var(--olive); cursor: pointer;
+  transition: all .2s; margin-left: auto;
+}
+.save-btn:hover { background: var(--olive); color: white; }
+.save-btn.saved { background: var(--olive); color: white; }
+
+.map-btn {
+  padding: 9px 18px; font-family: 'Roboto Mono', monospace;
+  font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+  border-radius: 2px; border: 1.5px solid var(--track);
+  background: white; color: var(--track); cursor: pointer;
+  transition: all .2s;
+}
+.map-btn:hover { background: var(--track); color: white; }
+
+/* ── SAVED PANEL ── */
+.saved-panel {
+  display: none; position: fixed; top: 0; right: 0; bottom: 0;
+  width: min(360px, 100vw); background: var(--cream);
+  border-left: 3px solid var(--gold); z-index: 2000;
+  overflow-y: auto; box-shadow: -4px 0 20px rgba(0,0,0,.2);
+}
+.saved-panel.open { display: block; }
+.saved-panel-header {
+  background: var(--rail-brown); padding: 1rem 1.25rem;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 3px solid var(--gold); position: sticky; top: 0;
+}
+.saved-panel-title { font-family: 'Playfair Display', serif; color: var(--gold); font-size: 1.1rem; }
+.close-panel { background: none; border: none; color: var(--cream); font-size: 1.4rem; cursor: pointer; }
+.saved-list { padding: 1rem; }
+.saved-item {
+  background: white; border: 1.5px solid var(--mist); border-radius: 2px;
+  padding: .9rem 1rem; margin-bottom: .75rem; position: relative;
+}
+.saved-item-route { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; color: var(--rail-brown); }
+.saved-item-meta { font-family: 'Roboto Mono', monospace; font-size: .68rem; color: var(--track); margin-top: 3px; }
+.saved-item-del {
+  position: absolute; top: .7rem; right: .7rem;
+  background: none; border: none; color: var(--mist);
+  font-size: 1rem; cursor: pointer; transition: color .2s;
+}
+.saved-item-del:hover { color: var(--rust); }
+.saved-empty { text-align: center; padding: 3rem 1rem; color: var(--track); font-size: .9rem; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+  background: var(--olive); color: white;
+  padding: .7rem 1.5rem; border-radius: 2px;
+  font-family: 'Roboto Mono', monospace; font-size: .75rem; letter-spacing: .1em;
+  opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 9999;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+
+/* ── FOOTER ── */
+.footer {
+  text-align: center; padding: 1.5rem;
+  background: var(--dark); color: var(--track);
+  font-family: 'Roboto Mono', monospace; font-size: .62rem;
+  letter-spacing: .1em; margin-top: 3rem;
+}
+.footer span { color: var(--gold); }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  .search-row { grid-template-columns: 1fr; }
+  .swap-btn { width: 100%; border-radius: 2px; height: 38px; }
+  .options-row { grid-template-columns: 1fr; }
+  .route-stats { gap: .75rem; }
+  .stat-val { font-size: 1rem; }
+  .hero { padding: 1.5rem 1rem 3rem; }
+  .search-card { padding: 1.1rem; }
+  .main { padding: 1rem; }
+  .header { padding: .75rem 1rem; }
+  .route-header { flex-wrap: wrap; }
+  .route-stats { width: 100%; justify-content: space-around; padding-top: .5rem; border-top: 1px solid var(--mist); }
+}
+
+/* Leaflet overrides */
+.leaflet-container { font-family: 'Zilla Slab', serif; }
+.leaflet-popup-content-wrapper { border-radius: 2px; border-left: 3px solid var(--gold); }
+.leaflet-popup-content { font-size: .85rem; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">Slow<span>Rail</span></div>
+  <div class="header-right">
+    <button class="nav-saved" onclick="toggleSavedPanel()">
+      <span id="saved-btn-label">Mes trajets</span>
+      <span class="saved-badge" id="saved-badge" style="display:none">0</span>
+    </button>
+    <div class="lang-toggle">
+      <button class="lang-btn active" onclick="setLang('fr')">FR</button>
+      <button class="lang-btn" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
+</header>
+
+<!-- HERO / SEARCH -->
+<section class="hero">
+  <h1 class="hero-title" id="hero-title">Le monde entier,<br><em>par les rails.</em></h1>
+  <p class="hero-sub" id="hero-sub">Trains, ferrys, bus longue distance — sans avion, sans compromis.</p>
+  <div class="search-card">
+    <div class="search-row">
+      <div>
+        <div class="field-label" id="lbl-from">Ville de départ</div>
+        <input class="field-input" id="from-input" placeholder="Paris, Tokyo, New York..." autocomplete="off" list="cities-from">
+        <datalist id="cities-from"></datalist>
+      </div>
+      <button class="swap-btn" onclick="swapCities()" title="Inverser">⇄</button>
+      <div>
+        <div class="field-label" id="lbl-to">Ville d'arrivée</div>
+        <input class="field-input" id="to-input" placeholder="Berlin, Bangkok, Sydney..." autocomplete="off" list="cities-to">
+        <datalist id="cities-to"></datalist>
+      </div>
+    </div>
+    <div class="options-row">
+      <div class="option-block">
+        <div class="field-label" id="lbl-mode">Mode de voyage</div>
+        <div class="flex-toggle">
+          <button class="flex-btn active" id="btn-direct" onclick="setMode('direct')">Direct</button>
+          <button class="flex-btn" id="btn-flexible" onclick="setMode('flexible')">Flexible</button>
+        </div>
+      </div>
+      <div class="option-block" id="days-block" style="display:none">
+        <div class="field-label" id="lbl-days">Jours disponibles</div>
+        <input class="days-field" id="days-input" type="number" min="1" max="120" value="7">
+      </div>
+    </div>
+    <button class="search-btn" id="search-btn" onclick="searchRoutes()">
+      <span id="btn-text">🚂 Trouver mon itinéraire</span>
+    </button>
+  </div>
+</section>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- LOADING -->
+  <div class="loading-state" id="loading-state">
+    <div class="train-track"></div>
+    <div class="loading-loco">🚂</div>
+    <div class="loading-text" id="loading-text">Calcul de votre trajet...</div>
+    <div class="loading-sub" id="loading-sub">RECHERCHE DES MEILLEURES LIAISONS FERROVIAIRES</div>
+  </div>
+
+  <!-- ERROR -->
+  <div class="error-state" id="error-state">
+    <div class="error-icon">🚧</div>
+    <div class="error-msg" id="error-msg">Oups, une erreur s'est produite</div>
+    <div class="error-sub" id="error-sub">Vérifiez les noms de villes et réessayez.</div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results-section" id="results-section">
+    <div class="results-header">
+      <div class="results-title" id="results-title">Itinéraires proposés</div>
+      <div class="results-count" id="results-count"></div>
+    </div>
+
+    <div class="co2-banner">
+      <div class="co2-icon">🌿</div>
+      <div class="co2-main">
+        <div class="co2-label" id="co2-label">En choisissant le train, vous économisez :</div>
+        <div class="co2-saving" id="co2-saving">— kg CO₂</div>
+      </div>
+      <div class="co2-compare" id="co2-compare"></div>
+    </div>
+
+    <!-- MAP -->
+    <div id="map-container">
+      <div class="map-header">
+        <span id="map-route-label">Carte de l'itinéraire</span>
+        <span class="map-route-label" id="map-route-cities"></span>
+      </div>
+      <div id="route-map"></div>
+    </div>
+
+    <div id="routes-container"></div>
+  </div>
+</main>
+
+<!-- SAVED PANEL -->
+<div class="saved-panel" id="saved-panel">
+  <div class="saved-panel-header">
+    <div class="saved-panel-title" id="saved-panel-title">Mes trajets sauvegardés</div>
+    <button class="close-panel" onclick="toggleSavedPanel()">✕</button>
+  </div>
+  <div class="saved-list" id="saved-list"></div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <span>SlowRail</span> — Durées & prix estimatifs. Réservez auprès des opérateurs officiels. &nbsp;|&nbsp; ♥ Slow travel, zéro avion
+</footer>
+
+<!-- Leaflet JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<script>
+// ── STATE ──
+let currentLang = 'fr';
+let currentMode = 'direct';
+let currentResult = null;
+let mapInstance = null;
+let savedRoutes = JSON.parse(localStorage.getItem('slowrail_saved') || '[]');
+
+// ── TRANSLATIONS ──
+const TX = {
+  fr: {
+    heroTitle: 'Le monde entier,<br><em>par les rails.</em>',
+    heroSub: 'Trains, ferrys, bus longue distance — sans avion, sans compromis.',
+    lblFrom: 'Ville de départ', lblTo: 'Ville d\'arrivée',
+    lblMode: 'Mode de voyage', lblDays: 'Jours disponibles',
+    btnSearch: '🚂 Trouver mon itinéraire', btnSearching: '⏳ Calcul en cours...',
+    loadingText: 'Calcul de votre trajet...', loadingSub: 'RECHERCHE DES MEILLEURES LIAISONS FERROVIAIRES',
+    resultsTitle: 'Itinéraires proposés',
+    co2Label: 'En choisissant le train, vous économisez :',
+    vsPlane: 'vs avion', routesFound: 'itinéraires trouvés',
+    segLabel: '📍 Étapes du trajet', bonusLabel: '✨ Étapes bonus slow travel',
+    bookBtn: 'Réserver', mapBtn: 'Voir sur la carte', saveBtn: 'Sauvegarder', savedBtn: 'Sauvegardé',
+    savedPanel: 'Mes trajets sauvegardés', savedBtnLabel: 'Mes trajets',
+    savedEmpty: 'Aucun trajet sauvegardé. Recherchez un itinéraire et cliquez sur Sauvegarder.',
+    toastSaved: '✓ Trajet sauvegardé', toastRemoved: '✕ Trajet supprimé',
+    mapLabel: 'Carte de l\'itinéraire',
+    duration: 'Durée', price: 'Prix estimé', changes: 'Correspondances',
+    errEmpty: 'Veuillez renseigner les villes de départ et d\'arrivée.',
+    errParse: 'Impossible d\'analyser la réponse. Réessayez.',
+    errGeneric: 'Erreur lors du calcul. Vérifiez les noms de villes.',
+    direct: 'Direct', flexible: 'Flexible',
+  },
+  en: {
+    heroTitle: 'The whole world,<br><em>by rail.</em>',
+    heroSub: 'Trains, ferries, long-distance buses — no planes, no compromise.',
+    lblFrom: 'Departure city', lblTo: 'Arrival city',
+    lblMode: 'Travel mode', lblDays: 'Available days',
+    btnSearch: '🚂 Find my route', btnSearching: '⏳ Searching...',
+    loadingText: 'Calculating your journey...', loadingSub: 'SEARCHING BEST RAIL CONNECTIONS',
+    resultsTitle: 'Suggested itineraries',
+    co2Label: 'By choosing train, you save:',
+    vsPlane: 'vs plane', routesFound: 'routes found',
+    segLabel: '📍 Journey segments', bonusLabel: '✨ Slow travel bonus stops',
+    bookBtn: 'Book', mapBtn: 'View on map', saveBtn: 'Save', savedBtn: 'Saved',
+    savedPanel: 'My saved routes', savedBtnLabel: 'My routes',
+    savedEmpty: 'No saved routes yet. Search for a route and click Save.',
+    toastSaved: '✓ Route saved', toastRemoved: '✕ Route removed',
+    mapLabel: 'Route map',
+    duration: 'Duration', price: 'Est. price', changes: 'Transfers',
+    errEmpty: 'Please enter departure and arrival cities.',
+    errParse: 'Could not parse response. Please try again.',
+    errGeneric: 'Calculation error. Check city names.',
+    direct: 'Direct', flexible: 'Flexible',
+  }
+};
+
+function L(key) { return TX[currentLang][key] || key; }
+
+// ── LANG ──
+function setLang(lang) {
+  currentLang = lang;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase() === lang));
+  applyLang();
+}
+function applyLang() {
+  document.getElementById('hero-title').innerHTML = L('heroTitle');
+  document.getElementById('hero-sub').textContent = L('heroSub');
+  document.getElementById('lbl-from').textContent = L('lblFrom');
+  document.getElementById('lbl-to').textContent = L('lblTo');
+  document.getElementById('lbl-mode').textContent = L('lblMode');
+  document.getElementById('lbl-days').textContent = L('lblDays');
+  document.getElementById('btn-text').textContent = L('btnSearch');
+  document.getElementById('btn-direct').textContent = L('direct');
+  document.getElementById('btn-flexible').textContent = L('flexible');
+  document.getElementById('co2-label').textContent = L('co2Label');
+  document.getElementById('saved-btn-label').textContent = L('savedBtnLabel');
+  document.getElementById('saved-panel-title').textContent = L('savedPanel');
+  document.getElementById('map-route-label').textContent = L('mapLabel');
+  renderSavedList();
+  if (currentResult) renderResults(currentResult, currentResult._from, currentResult._to);
+}
+
+// ── MODE ──
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('btn-direct').classList.toggle('active', mode === 'direct');
+  document.getElementById('btn-flexible').classList.toggle('active', mode === 'flexible');
+  document.getElementById('days-block').style.display = mode === 'flexible' ? 'flex' : 'none';
+}
+
+function swapCities() {
+  const f = document.getElementById('from-input');
+  const t = document.getElementById('to-input');
+  [f.value, t.value] = [t.value, f.value];
+}
+
+// ── TOAST ──
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ── SAVED ──
+function updateSavedBadge() {
+  const badge = document.getElementById('saved-badge');
+  badge.style.display = savedRoutes.length > 0 ? 'flex' : 'none';
+  badge.textContent = savedRoutes.length;
+}
+function toggleSavedPanel() {
+  document.getElementById('saved-panel').classList.toggle('open');
+  renderSavedList();
+}
+function renderSavedList() {
+  const list = document.getElementById('saved-list');
+  if (savedRoutes.length === 0) {
+    list.innerHTML = `<div class="saved-empty">${L('savedEmpty')}</div>`;
+    return;
+  }
+  list.innerHTML = savedRoutes.map((r, i) => `
+    <div class="saved-item">
+      <div class="saved-item-route">${r.from} → ${r.to}</div>
+      <div class="saved-item-meta">${r.routeName} · ${r.duration} · ${r.price}€</div>
+      <button class="saved-item-del" onclick="deleteSaved(${i})">✕</button>
+    </div>
+  `).join('');
+}
+function saveRoute(routeData) {
+  const id = routeData.from + routeData.to + routeData.routeName;
+  if (savedRoutes.find(r => r.from + r.to + r.routeName === id)) return;
+  savedRoutes.push(routeData);
+  localStorage.setItem('slowrail_saved', JSON.stringify(savedRoutes));
+  updateSavedBadge();
+  showToast(L('toastSaved'));
+}
+function deleteSaved(idx) {
+  savedRoutes.splice(idx, 1);
+  localStorage.setItem('slowrail_saved', JSON.stringify(savedRoutes));
+  updateSavedBadge();
+  renderSavedList();
+  showToast(L('toastRemoved'));
+}
+updateSavedBadge();
+
+// ── MAP ──
+function initMap(routes, from, to) {
+  if (typeof L === 'undefined' || typeof L.map !== 'function') {
+    setTimeout(() => initMap(routes, from, to), 300);
+    return;
+  }
+  const mapEl = document.getElementById('map-container');
+  document.getElementById('map-route-cities').textContent = `${from} → ${to}`;
+  mapEl.classList.add('active');
+  if (mapInstance) { mapInstance.remove(); mapInstance = null; }
+  mapInstance = L.map('route-map', { scrollWheelZoom: false, preferCanvas: true });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors', maxZoom: 18, crossOrigin: true
+  }).addTo(mapInstance);
+
+  const allPoints = [];
+  const colors = ['#B5451B', '#4A5240', '#C9A84C'];
+
+  routes.forEach((route, ri) => {
+    if (!route.waypoints || route.waypoints.length < 2) return;
+    const pts = route.waypoints.map(w => [w.lat, w.lng]);
+    allPoints.push(...pts);
+
+    L.polyline(pts, { color: colors[ri % colors.length], weight: 3, opacity: .8, dashArray: ri > 0 ? '8,4' : null }).addTo(mapInstance);
+
+    route.waypoints.forEach((w, wi) => {
+      const isEndpoint = wi === 0 || wi === route.waypoints.length - 1;
+      const marker = L.circleMarker([w.lat, w.lng], {
+        radius: isEndpoint ? 8 : 5,
+        fillColor: isEndpoint ? colors[ri % colors.length] : '#fff',
+        color: colors[ri % colors.length],
+        weight: 2, fillOpacity: 1
+      }).addTo(mapInstance);
+      if (w.name) marker.bindPopup(`<strong>${w.name}</strong>${w.note ? '<br><span style="font-size:.8rem;color:#6B5D4F">' + w.note + '</span>' : ''}`);
+    });
+  });
+
+  if (allPoints.length > 0) {
+    mapInstance.fitBounds(L.latLngBounds(allPoints), { padding: [30, 30] });
+  }
+  setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 150);
+  setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 600);
+}
+
+// ── API CALL ──
+async function searchRoutes() {
+  const from = document.getElementById('from-input').value.trim();
+  const to = document.getElementById('to-input').value.trim();
+  const days = parseInt(document.getElementById('days-input').value) || 7;
+
+  if (!from || !to) { alert(L('errEmpty')); return; }
+
+  const btn = document.getElementById('search-btn');
+  btn.disabled = true;
+  document.getElementById('btn-text').textContent = L('btnSearching');
+  document.getElementById('loading-state').classList.add('active');
+  document.getElementById('loading-text').textContent = L('loadingText');
+  document.getElementById('loading-sub').textContent = L('loadingSub');
+  document.getElementById('results-section').classList.remove('active');
+  document.getElementById('error-state').classList.remove('active');
+  document.getElementById('map-container').classList.remove('active');
+
+  const flexInfo = currentMode === 'flexible'
+    ? `The user is flexible and has ${days} days available to travel. Suggest scenic multi-day options with overnight trains where possible.`
+    : `The user prefers a relatively direct route with minimal detours.`;
+
+  const systemPrompt = `You are a world-class slow travel expert specializing in train, ferry, and long-distance bus routes globally. You have deep knowledge of rail operators worldwide: SNCF, Deutsche Bahn, Renfe, Trenitalia, SBB, ÖBB, PKP, Czech Railways, Trans-Siberian, Amtrak, VIA Rail, JR Pass, KTX, Indian Railways, etc.
+
+CRITICAL: Return ONLY valid JSON. No markdown, no explanation, no preamble. The response must start with { and end with }.`;
+
+  const userPrompt = `Overland routes only (train/ferry/bus, NO flights) from "${from}" to "${to}". ${flexInfo}
+
+Respond with ONLY valid JSON, nothing else. Be CONCISE in text fields (max 8 words for highlights, max 3 bonus stops per route, max 2 booking_urls per route).
+
+{"possible":true,"routes":[{"id":1,"label_fr":"FR name","label_en":"EN name","type_fr":"type FR","type_en":"type EN","duration_display":"8h00","duration_hours":8.0,"price_eur_min":59,"price_eur_max":150,"changes":1,"distance_km":1050,"segments":[{"mode":"train","from":"City A","to":"City B","operator":"Operator","duration":"1h22","note_fr":"note","note_en":"note"}],"waypoints":[{"lat":48.88,"lng":2.35,"name":"Paris","note":"Gare du Nord"},{"lat":52.52,"lng":13.37,"name":"Berlin","note":"Hbf"}],"bonus_stops_fr":["City — detail"],"bonus_stops_en":["City — detail"],"booking_urls":[{"name":"Trainline","url":"https://www.thetrainline.com"}],"highlights_fr":"Courte phrase poétique.","highlights_en":"Short poetic sentence."}],"co2_saved_kg":110,"co2_plane_kg":130,"error_fr":null,"error_en":null}
+
+Rules: 2 routes max (fastest + scenic). Accurate lat/lng. mode: train|bus|ferry|metro|tram. If ocean crossing impossible set possible:false. JSON only.`;
+
+  try {
+    const response = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }]
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error('API error: ' + response.status + ' ' + err);
+    }
+
+    const data = await response.json();
+    const rawText = (data.content || []).map(c => c.text || '').join('').trim();
+
+    // Robust JSON extraction — strip any wrapping text/markdown
+    let jsonStr = rawText;
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) jsonStr = jsonMatch[0];
+    // Remove markdown code fences if any
+    jsonStr = jsonStr.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+    let result;
+    try {
+      result = JSON.parse(jsonStr);
+    } catch(parseErr) {
+      console.error('Parse error:', parseErr, '\nRaw:', rawText);
+      throw new Error('parse');
+    }
+
+    document.getElementById('loading-state').classList.remove('active');
+    btn.disabled = false;
+    document.getElementById('btn-text').textContent = L('btnSearch');
+
+    if (!result.possible) {
+      document.getElementById('error-state').classList.add('active');
+      document.getElementById('error-msg').textContent = currentLang === 'fr' ? result.error_fr : result.error_en;
+      document.getElementById('error-sub').textContent = '';
+      return;
+    }
+
+    result._from = from;
+    result._to = to;
+    currentResult = result;
+    renderResults(result, from, to);
+
+  } catch(e) {
+    document.getElementById('loading-state').classList.remove('active');
+    btn.disabled = false;
+    document.getElementById('btn-text').textContent = L('btnSearch');
+    document.getElementById('error-state').classList.add('active');
+    const msg = e.message === 'parse' ? L('errParse') : L('errGeneric');
+    document.getElementById('error-msg').textContent = msg;
+    document.getElementById('error-sub').textContent = e.message !== 'parse' ? e.message : '';
+    console.error('SlowRail error:', e);
+  }
+}
+
+// ── RENDER RESULTS ──
+function renderResults(data, from, to) {
+  const modeIcons = { train: '🚂', bus: '🚌', ferry: '⛴️', metro: '🚇', tram: '🚋', cable: '🚡' };
+  const container = document.getElementById('routes-container');
+  const section = document.getElementById('results-section');
+
+  document.getElementById('results-title').textContent = L('resultsTitle');
+  document.getElementById('results-count').textContent = `${data.routes.length} ${L('routesFound')} · ${from} → ${to}`;
+  document.getElementById('co2-saving').textContent = `${data.co2_saved_kg || '?'} kg CO₂`;
+  document.getElementById('co2-label').textContent = L('co2Label');
+  document.getElementById('co2-compare').textContent = `${L('vsPlane')}: ${data.co2_plane_kg || '?'} kg`;
+
+  container.innerHTML = data.routes.map((route, idx) => {
+    const label = currentLang === 'fr' ? route.label_fr : route.label_en;
+    const type = currentLang === 'fr' ? route.type_fr : route.type_en;
+    const highlights = currentLang === 'fr' ? route.highlights_fr : route.highlights_en;
+    const bonusStops = currentLang === 'fr' ? route.bonus_stops_fr : route.bonus_stops_en;
+
+    const segments = (route.segments || []).map(s => {
+      const icon = modeIcons[s.mode] || '🚂';
+      const note = currentLang === 'fr' ? (s.note_fr || '') : (s.note_en || '');
+      return `<div class="segment">
+        <div class="seg-icon">${icon}</div>
+        <div>
+          <div class="seg-name">${s.from} → ${s.to}</div>
+          <div class="seg-detail">${s.operator}${note ? ' · ' + note : ''}</div>
+        </div>
+        <div class="seg-dur">${s.duration}</div>
+      </div>`;
+    }).join('');
+
+    const bonusHtml = (bonusStops || []).length > 0 ? `
+      <div class="bonus-area">
+        <div class="bonus-title">${L('bonusLabel')}</div>
+        <div class="bonus-chips">${(bonusStops || []).map(s => `<span class="bonus-chip">${s}</span>`).join('')}</div>
+      </div>` : '';
+
+    const bookLinks = (route.booking_urls || []).map((b, bi) =>
+      `<a class="book-btn${bi > 0 ? ' secondary' : ''}" href="${b.url}" target="_blank" rel="noopener">${b.name}</a>`
+    ).join('');
+
+    const saveData = JSON.stringify({ from, to, routeName: label, duration: route.duration_display, price: route.price_eur_min }).replace(/"/g, '&quot;');
+
+    return `<div class="route-card" id="card-${idx}">
+      <div class="route-header" onclick="toggleCard(${idx})">
+        <div class="route-meta">
+          <div class="route-type">${type}</div>
+          <div class="route-name">${label}</div>
+          <div class="route-highlight">${highlights}</div>
+        </div>
+        <div class="route-stats">
+          <div class="stat"><div class="stat-val">${route.duration_display}</div><div class="stat-lbl">${L('duration')}</div></div>
+          <div class="stat"><div class="stat-val">${route.price_eur_min}–${route.price_eur_max}€</div><div class="stat-lbl">${L('price')}</div></div>
+          <div class="stat"><div class="stat-val">${route.changes}</div><div class="stat-lbl">${L('changes')}</div></div>
+        </div>
+        <div class="expand-chevron">▼</div>
+      </div>
+      <div class="route-detail">
+        <div class="section-label">${L('segLabel')}</div>
+        <div class="segment-list">${segments}</div>
+        ${bonusHtml}
+        <div class="actions-row">
+          ${bookLinks}
+          <button class="map-btn" onclick="showRouteOnMap(${idx})">${L('mapBtn')}</button>
+          <button class="save-btn" id="save-${idx}" onclick="handleSave(${idx}, '${saveData}')">${L('saveBtn')}</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  section.classList.add('active');
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // Auto-init map with first route
+  if (data.routes.length > 0 && data.routes.some(r => r.waypoints && r.waypoints.length >= 2)) {
+    setTimeout(() => initMap(data.routes, from, to), 300);
+  }
+}
+
+function toggleCard(idx) {
+  document.getElementById('card-' + idx).classList.toggle('expanded');
+}
+
+function showRouteOnMap(idx) {
+  if (!currentResult) return;
+  const route = currentResult.routes[idx];
+  if (!route || !route.waypoints || route.waypoints.length < 2) return;
+  document.getElementById('map-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => initMap([route], currentResult._from, currentResult._to), 200);
+}
+
+function handleSave(idx, saveDataStr) {
+  try {
+    const data = JSON.parse(saveDataStr.replace(/&quot;/g, '"'));
+    saveRoute(data);
+    const btn = document.getElementById('save-' + idx);
+    btn.textContent = L('savedBtn');
+    btn.classList.add('saved');
+    btn.disabled = true;
+  } catch(e) { console.error(e); }
+}
+
+// ── Enter key support ──
+document.getElementById('from-input').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('to-input').focus(); });
+document.getElementById('to-input').addEventListener('keydown', e => { if(e.key==='Enter') searchRoutes(); });
+</script>
+
+</body>
+</html>
