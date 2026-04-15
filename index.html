@@ -710,8 +710,16 @@ Rules: 2 routes max (fastest + scenic). Accurate lat/lng. mode: train|bus|ferry|
       })
     });
 
-    if (!response.ok) {
+   if (!response.ok) {
       const err = await response.text();
+      let errData;
+      try { errData = JSON.parse(err); } catch(e) { errData = { error: err }; }
+      const msg = errData.error || '';
+      if (msg.includes('high demand') || msg.includes('overloaded') || msg.includes('429')) {
+        throw new Error(currentLang === 'fr' 
+          ? 'Le service est temporairement surchargé. Réessayez dans 1 minute.' 
+          : 'Service temporarily overloaded. Please retry in 1 minute.');
+      }
       throw new Error('API error: ' + response.status + ' ' + err);
     }
 
@@ -836,7 +844,7 @@ function renderResults(data, from, to) {
 
   // Auto-init map with first route
   if (data.routes.length > 0 && data.routes.some(r => r.waypoints && r.waypoints.length >= 2)) {
-    setTimeout(() => initMap(data.routes, from, to), 800);
+    setTimeout(() => initMap(data.routes, from, to), 1200);
   }
 }
 
