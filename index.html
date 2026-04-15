@@ -857,9 +857,10 @@ function showRouteOnMap(idx) {
   const route = currentResult.routes[idx];
   if (!route || !route.waypoints || route.waypoints.length < 2) return;
   const points = route.waypoints.map(w => w.lat + ',' + w.lng).join('|');
-  const origin = route.waypoints[0].lat + ',' + route.waypoints[0].lng;
-  const dest = route.waypoints[route.waypoints.length-1].lat + ',' + route.waypoints[route.waypoints.length-1].lng;
-  const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=transit`;
+  const origin = encodeURIComponent(currentResult._from);
+const dest = encodeURIComponent(currentResult._to);
+const waypts = route.waypoints.slice(1,-1).map(w => encodeURIComponent(w.name)).join('|');
+const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}${waypts ? '&waypoints=' + waypts : ''}&travelmode=transit`;
   window.open(url, '_blank');
 }
 
