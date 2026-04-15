@@ -855,14 +855,13 @@ function toggleCard(idx) {
 function showRouteOnMap(idx) {
   if (!currentResult) return;
   const route = currentResult.routes[idx];
-  if (!route || !route.waypoints || route.waypoints.length < 2) return;
-  const points = route.waypoints.map(w => w.lat + ',' + w.lng).join('|');
-  const origin = encodeURIComponent(currentResult._from);
-const dest = encodeURIComponent(currentResult._to);
-const waypts = route.waypoints.slice(1,-1).map(w => encodeURIComponent(w.name)).join('|');
-const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}${waypts ? '&waypoints=' + waypts : ''}&travelmode=transit`;
+  if (!route) return;
+  const stops = [currentResult._from, ...(route.waypoints||[]).slice(1,-1).map(w=>w.name), currentResult._to];
+  const query = encodeURIComponent(stops.join(' → '));
+  const url = `https://www.google.com/maps/search/${query}`;
   window.open(url, '_blank');
 }
+
 
 function handleSave(idx, saveDataStr) {
   try {
