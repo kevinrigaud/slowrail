@@ -666,7 +666,7 @@ function initMap(routes, from, to) {
 }
 
 // ── API CALL ──
-async function searchRoutes() {
+async function searchRoutes(retryCount = 0) {
   const from = document.getElementById('from-input').value.trim();
   const to = document.getElementById('to-input').value.trim();
   const days = parseInt(document.getElementById('days-input').value) || 7;
@@ -756,6 +756,11 @@ Max 2 routes. Accurate coords. If ocean crossing impossible: possible:false. JSO
     renderResults(result, from, to);
 
   } catch(e) {
+    if (e.message && e.message.includes('Rate limit') && retryCount < 2) {
+      document.getElementById('loading-text').textContent = currentLang === 'fr' ? 'Serveur occupé, nouvelle tentative...' : 'Server busy, retrying...';
+      await new Promise(r => setTimeout(r, 15000));
+      return searchRoutes(retryCount + 1);
+    }
     document.getElementById('loading-state').classList.remove('active');
     btn.disabled = false;
     document.getElementById('btn-text').textContent = L('btnSearch');
