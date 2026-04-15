@@ -802,7 +802,7 @@ function renderResults(data, from, to) {
       `<a class="book-btn${bi > 0 ? ' secondary' : ''}" href="${b.url}" target="_blank" rel="noopener">${b.name}</a>`
     ).join('');
 
-    const saveData = JSON.stringify({ from, to, routeName: label, duration: route.duration_display, price: route.price_eur_min }).replace(/"/g, '&quot;');
+    const saveData = btoa(unescape(encodeURIComponent(JSON.stringify({ from, to, routeName: label, duration: route.duration_display, price: route.price_eur_min }))));
 
     return `<div class="route-card" id="card-${idx}">
       <div class="route-header" onclick="toggleCard(${idx})">
@@ -824,7 +824,7 @@ function renderResults(data, from, to) {
         ${bonusHtml}
         <div class="actions-row">
           ${bookLinks}
-          <button class="map-btn" onclick="showRouteOnMap(${idx})">${L('mapBtn')}</button>
+          <button class="map-btn" onclick="event.stopPropagation();showRouteOnMap(${idx})">${L('mapBtn')}</button>
           <button class="save-btn" id="save-${idx}" onclick="handleSave(${idx}, '${saveData}')">${L('saveBtn')}</button>
         </div>
       </div>
@@ -836,7 +836,7 @@ function renderResults(data, from, to) {
 
   // Auto-init map with first route
   if (data.routes.length > 0 && data.routes.some(r => r.waypoints && r.waypoints.length >= 2)) {
-    setTimeout(() => initMap(data.routes, from, to), 300);
+    setTimeout(() => initMap(data.routes, from, to), 800);
   }
 }
 
@@ -854,7 +854,7 @@ function showRouteOnMap(idx) {
 
 function handleSave(idx, saveDataStr) {
   try {
-    const data = JSON.parse(saveDataStr.replace(/&quot;/g, '"'));
+    const data = JSON.parse(decodeURIComponent(escape(atob(saveDataStr))));
     saveRoute(data);
     const btn = document.getElementById('save-' + idx);
     btn.textContent = L('savedBtn');
