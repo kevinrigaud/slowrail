@@ -13,7 +13,7 @@ export default function handler(req, res) {
   const { system, messages } = req.body;
 
   const payload = JSON.stringify({
-    model: 'llama3-8b-8192',
+    model: 'llama-3.1-8b-instant',
     messages: [
       { role: 'system', content: system },
       { role: 'user', content: messages?.[0]?.content || '' }
