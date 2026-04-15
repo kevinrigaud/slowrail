@@ -708,15 +708,18 @@ Max 2 routes. Accurate coords. If ocean crossing impossible: possible:false. JSO
       })
     });
 
-   if (!response.ok) {
+if (!response.ok) {
       const err = await response.text();
       let errData;
       try { errData = JSON.parse(err); } catch(e) { errData = { error: err }; }
       const msg = errData.error || '';
-      if (msg.includes('high demand') || msg.includes('overloaded') || msg.includes('429') || msg.includes('quota') || msg.includes('exceeded')) {
-        throw new Error(currentLang === 'fr' 
-          ? 'Trop de recherches simultanées. Réessayez dans 30 secondes ☕' 
-          : 'Too many requests. Please retry in 30 seconds ☕');
+      if (msg.includes('Rate limit') || msg.includes('high demand') || msg.includes('overloaded') || msg.includes('429') || msg.includes('quota') || msg.includes('exceeded')) {
+        if (retryCount < 2) {
+          document.getElementById('loading-text').textContent = currentLang === 'fr' ? 'Serveur occupé, nouvelle tentative dans 20s...' : 'Server busy, retrying in 20s...';
+          await new Promise(r => setTimeout(r, 20000));
+          return searchRoutes(retryCount + 1);
+        }
+        throw new Error(currentLang === 'fr' ? 'Trop de recherches simultanées. Réessayez dans 1 minute ☕' : 'Too many requests. Please retry in 1 minute ☕');
       }
       throw new Error('API error: ' + response.status + ' ' + err);
     }
