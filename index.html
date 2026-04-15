@@ -715,10 +715,10 @@ Rules: 2 routes max (fastest + scenic). Accurate lat/lng. mode: train|bus|ferry|
       let errData;
       try { errData = JSON.parse(err); } catch(e) { errData = { error: err }; }
       const msg = errData.error || '';
-      if (msg.includes('high demand') || msg.includes('overloaded') || msg.includes('429')) {
+      if (msg.includes('high demand') || msg.includes('overloaded') || msg.includes('429') || msg.includes('quota') || msg.includes('exceeded')) {
         throw new Error(currentLang === 'fr' 
-          ? 'Le service est temporairement surchargé. Réessayez dans 1 minute.' 
-          : 'Service temporarily overloaded. Please retry in 1 minute.');
+          ? 'Trop de recherches simultanées. Réessayez dans 30 secondes ☕' 
+          : 'Too many requests. Please retry in 30 seconds ☕');
       }
       throw new Error('API error: ' + response.status + ' ' + err);
     }
