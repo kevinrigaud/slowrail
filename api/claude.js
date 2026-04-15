@@ -7,35 +7,29 @@ export default function handler(req, res) {
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) { res.status(500).json({ error: 'API key not configured' }); return; }
 
   const { system, messages } = req.body;
-  const userContent = messages?.[0]?.content || '';
-
-  // Instruct Gemini very firmly to return only JSON
-  const fullPrompt = `${system}
-
-CRITICAL INSTRUCTION: Your response must contain ONLY the JSON object. No markdown, no backticks, no explanation before or after. Start your response with { and end with }. Nothing else.
-
-${userContent}`;
 
   const payload = JSON.stringify({
-    contents: [{ parts: [{ text: fullPrompt }] }],
-    generationConfig: {
-      temperature: 0.4,
-      maxOutputTokens: 8192
-    }
+    model: 'llama-3.3-70b-versatile',
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: messages?.[0]?.content || '' }
+    ],
+    temperature: 0.4,
+    max_tokens: 8192,
+    response_format: { type: 'json_object' }
   });
 
-  const path = `/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`;
-
   const options = {
-    hostname: 'generativelanguage.googleapis.com',
-    path,
+    hostname: 'api.groq.com',
+    path: '/openai/v1/chat/completions',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
       'Content-Length': Buffer.byteLength(payload),
     }
   };
@@ -46,30 +40,16 @@ ${userContent}`;
     apiRes.on('end', () => {
       try {
         const parsed = JSON.parse(data);
-
-        // Check for API errors
         if (parsed.error) {
-          res.status(500).json({ error: parsed.error.message || 'Gemini API error' });
+          res.status(500).json({ error: parsed.error.message || 'Groq API error' });
           return;
         }
-
-        let text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-        // Strip any markdown fences if present despite instructions
+        let text = parsed?.choices?.[0]?.message?.content || '';
         text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-
-        // Extract JSON object if surrounded by text
         const match = text.match(/\{[\s\S]*\}/);
         if (match) text = match[0];
-
-        // Validate it's parseable JSON before returning
-        JSON.parse(text); // throws if invalid
-
-        // Return in Anthropic-compatible format so frontend works unchanged
-        res.status(200).json({
-          content: [{ type: 'text', text }]
-        });
-
+        JSON.parse(text);
+        res.status(200).json({ content: [{ type: 'text', text }] });
       } catch(e) {
         res.status(500).json({ error: 'Parse error: ' + e.message, raw: data.slice(0, 500) });
       }
